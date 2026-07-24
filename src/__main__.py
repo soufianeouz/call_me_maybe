@@ -1,17 +1,17 @@
 import argparse
+import json
 from .loader import read_json_files
 from .function_selector import function_selector
 from .constrained_decoder import constrained_decoder
 from llm_sdk import Small_LLM_Model
 from .models import OutputResult
 
-import json
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--input", default="data/input/tests.json")
 parser.add_argument("--output", default="data/output/results.json")
-parser.add_argument("--functions_definition",  default="data/input/functions_definition.json")
+parser.add_argument("--functions_definition", default="data/input/functions_definition.json")
 
 args = parser.parse_args()
 module = Small_LLM_Model()
@@ -28,9 +28,8 @@ for prompt in data["prompts"]:
             break
     param = constrained_decoder(prompt["prompt"], valid_function, module)
 
-
     try:
-        result = OutputResult(
+        OutputResult(
             prompt=prompt["prompt"],
             name=name_func,
             parameters=param
