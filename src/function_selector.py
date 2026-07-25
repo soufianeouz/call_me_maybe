@@ -3,11 +3,13 @@ import numpy as np
 from typing import Any
 
 
-def function_selector(prompt: str, Available_functions: list, LLM_Model: Any) -> str:
+def function_selector(
+    prompt: str, Available_functions: list, LLM_Model: Any
+) -> str:
     functions_str = ""
 
     for item in Available_functions:
-        functions_str = functions_str + item["name"] + ": " + item["description"] + "\n"
+        functions_str += f"{item['name']}: {item['description']}\n"
 
     message = (
         f"You are a function selector.\n"
@@ -45,8 +47,8 @@ def function_selector(prompt: str, Available_functions: list, LLM_Model: Any) ->
         for token in valid_tokens_id:
             new_logist[token] = logist[token]
 
-        next_token_id = int(np.argmax(new_logist))  # np.argmax → finds the index of the biggest value directly.
+        next_token_id = int(np.argmax(new_logist))
         input_ids.append(next_token_id)
-
         current_text += reversed_vocab[next_token_id]
+
     return current_text

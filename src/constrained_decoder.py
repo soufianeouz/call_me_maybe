@@ -3,7 +3,9 @@ import numpy as np
 from typing import Any
 
 
-def generate_number(prompt: str, param_name: str, LLM_Model: Any, context: str) -> float:
+def generate_number(
+    prompt: str, param_name: str, LLM_Model: Any, context: str
+) -> float:
     message = (
         f"Prompt: '{prompt}'\n"
         f"Extract only the value for '{param_name}' from the prompt.\n"
@@ -18,7 +20,6 @@ def generate_number(prompt: str, param_name: str, LLM_Model: Any, context: str) 
     reversed_vocab = {v: k for k, v in vocabulary.items()}
     current_value = ""
     input_ids = list(ids[0])
-
     stop_tokens = [" ", "\n", "Ċ", "▁"]
 
     while True:
@@ -29,27 +30,22 @@ def generate_number(prompt: str, param_name: str, LLM_Model: Any, context: str) 
 
         valid_chars = set("0123456789.-")
         for word, token_id in vocabulary.items():
-            # allow number tokens
             if all(c in valid_chars for c in word):
                 if current_value == "" and not word[0].isdigit():
                     continue
                 new_logist_copy[token_id] = logist[token_id]
-            # allow stop tokens only if we already have a number
             if word in stop_tokens and current_value != "":
                 new_logist_copy[token_id] = logist[token_id]
 
-        # no valid tokens → stop
         if new_logist_copy.max() == -np.inf:
             break
 
         next_token_id = int(np.argmax(new_logist_copy))
         next_token = reversed_vocab[next_token_id]
 
-        # model picked stop token → number is complete
         if next_token in stop_tokens:
             break
 
-        # safety stop
         if len(current_value) > 15:
             break
 
@@ -65,11 +61,12 @@ def generate_number(prompt: str, param_name: str, LLM_Model: Any, context: str) 
     return float(current_value)
 
 
-def generate_string(prompt: str, param_name: str, LLM_Model: Any, context: str) -> str:
-
+def generate_string(
+    prompt: str, param_name: str, LLM_Model: Any, context: str
+) -> str:
     message = (
         f"Prompt: '{prompt}'\n"
-        f"Extract only the value for '{param_name}' from the prompt .\n"
+        f"Extract only the value for '{param_name}' from the prompt.\n"
         f"{context}{param_name}="
     )
     ids = LLM_Model.encode(message)
@@ -79,17 +76,14 @@ def generate_string(prompt: str, param_name: str, LLM_Model: Any, context: str) 
     stop_tokens = [" ", "\n", "Ċ", "▁"]
 
     path = LLM_Model.get_path_to_vocab_file()
-
     with open(path, "r") as f:
         vocabulary = json.load(f)
 
     reverse_vocab = {v: k for k, v in vocabulary.items()}
 
     while True:
-        # print("S")
         logist = LLM_Model.get_logits_from_input_ids(input_ids)
         logist = np.array(logist)
-        # new_logist_copy = logist.copy()
         next_token_id = int(np.argmax(logist))
 
         if any(stop in reverse_vocab[next_token_id] for stop in stop_tokens):
@@ -98,27 +92,31 @@ def generate_string(prompt: str, param_name: str, LLM_Model: Any, context: str) 
         input_ids.append(next_token_id)
         if len(current_string) > 50:
             break
+
     if current_string == "":
         return ""
     result = current_string.replace("'", "").strip().lstrip("Ġ")
-    # return current_string
     return result.replace("Ġ", " ")
 
 
-def constrained_decoder(prompt: str, function: dict, LLM_Model: Any) -> dict:
+def constrained_decoder(
+    prompt: str, function: dict, LLM_Model: Any
+) -> dict:
     result = {}
     value: Any = None
     context = ""
+
     for param_name, param_info in function["parameters"].items():
         param_type = param_info["type"]
 
-        # pass context to generate_value
         if param_type == "number":
-            value = generate_number(prompt, function["name"], LLM_Model, context)
-
-        # update context with extracted value
+            value = generate_number(
+                prompt, param_name, LLM_Model, context
+            )
         if param_type == "string":
-            value = generate_string(prompt, param_name, LLM_Model, context)
+            value = generate_string(
+                prompt, param_name, LLM_Model, context
+            )
         context += f"{param_name}={value}\n"
         result[param_name] = value
 
