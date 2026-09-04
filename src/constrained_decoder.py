@@ -21,6 +21,7 @@ def generate_number(
     current_value = ""
     input_ids = list(ids[0])
     stop_tokens = [" ", "\n", "Ċ", "▁"]
+    marker_chars = "▁Ġ"  # SentencePiece / BPE word-start markers
 
     while True:
         logist = LLM_Model.get_logits_from_input_ids(input_ids)
@@ -30,9 +31,11 @@ def generate_number(
 
         valid_chars = set("0123456789.-")
         for word, token_id in vocabulary.items():
-            if all(c in valid_chars for c in word):
-                if current_value == "" and not word[0].isdigit():
+            stripped = word.lstrip(marker_chars)
+            if stripped and all(c in valid_chars for c in stripped):
+                if current_value == "" and not (stripped[0].isdigit() or stripped[0] == "-"):
                     continue
+
                 new_logist_copy[token_id] = logist[token_id]
             if word in stop_tokens and current_value != "":
                 new_logist_copy[token_id] = logist[token_id]
@@ -49,15 +52,23 @@ def generate_number(
         if len(current_value) > 15:
             break
 
+        stripped_token = next_token.lstrip(marker_chars)
+
+        if stripped_token == "-" and current_value == "":
+            current_value += stripped_token
+            input_ids.append(next_token_id)
+            continue
+
         try:
-            float(current_value + next_token)
-            current_value += next_token
+            float(current_value + stripped_token)
+            current_value += stripped_token
             input_ids.append(next_token_id)
         except ValueError:
             break
 
-    if current_value == "":
+    if current_value == "" or current_value == "-":
         return 0.0
+
     return float(current_value)
 
 
