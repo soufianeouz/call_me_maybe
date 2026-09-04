@@ -8,6 +8,7 @@ def function_selector(
 ) -> str:
     functions_str = ""
 
+    # Available_functions.append("NO_FUNCTION")
     for item in Available_functions:
         functions_str += f"{item['name']}: {item['description']}\n"
 

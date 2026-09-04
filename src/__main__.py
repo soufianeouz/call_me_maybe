@@ -5,12 +5,13 @@ from .function_selector import function_selector
 from .constrained_decoder import constrained_decoder
 from llm_sdk import Small_LLM_Model
 from .models import OutputResult
+import os
 
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--input", default="data/input/tests.json")
-parser.add_argument("--output", default="data/output/results.json")
+parser.add_argument("--output", default="data/output/function_calling_results.json")
 parser.add_argument(
     "--functions_definition",
     default="data/input/functions_definition.json",
@@ -49,6 +50,7 @@ for prompt in data["prompts"]:
     except Exception as err:
         print(f"Error: invalid output format → {err}")
         exit(1)
+os.makedirs(os.path.dirname(args.output), exist_ok=True)
 
 with open(args.output, "w") as f:
     json.dump(final_result, f, indent=4)

@@ -2,8 +2,7 @@ install:
 	uv sync
 
 run:
-	uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/tests.json --output data/output/results.json
-
+	uv run python -m src
 debug:
 	uv run python -m src --functions_definition data/input/functions_definition.json --input data/input/tests.json --output data/output/results.json
 
