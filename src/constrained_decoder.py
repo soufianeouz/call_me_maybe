@@ -1,11 +1,11 @@
 import json
 import numpy as np
 from typing import Any
-import re
 
 
 def generate_number(
-    prompt: str, param_name: str, LLM_Model: Any, context: str, param_type: str
+    prompt: str, param_name: str, LLM_Model: Any, context: str,
+    param_type: str
 ) -> float:
     message = (
         f"Prompt: '{prompt}'\n"
@@ -34,7 +34,9 @@ def generate_number(
         for word, token_id in vocabulary.items():
             stripped = word.lstrip(marker_chars)
             if stripped and all(c in valid_chars for c in stripped):
-                if current_value == "" and not (stripped[0].isdigit() or stripped[0] == "-"):
+                if current_value == "" and not (
+                    stripped[0].isdigit() or stripped[0] == "-"
+                ):
                     continue
 
                 new_logist_copy[token_id] = logist[token_id]
@@ -74,7 +76,6 @@ def generate_number(
     return float(current_value)
 
 
-
 SYMBOL_MAP = {
     "asterisk": "*", "asterisks": "*", "star": "*", "stars": "*",
     "underscore": "_", "underscores": "_",
@@ -84,13 +85,15 @@ SYMBOL_MAP = {
     "at sign": "@", "at symbol": "@",
 }
 
+
 def normalize_replacement(value: str) -> str:
     v = value.lower().strip()
     if v in SYMBOL_MAP:
         return SYMBOL_MAP[v]
     if len(set(v)) == 1 and v[0] in "*_-#":  # catches "****", "----", etc.
         return v[0]
-    return value  # leave literal words/values (e.g. "X", "blue", "NUMBERS") untouched
+    # leave literal words/values (e.g. "X", "blue", "NUMBERS") untouched
+    return value
 
 
 def normalize_regex(value: str) -> str:
@@ -104,6 +107,7 @@ def normalize_regex(value: str) -> str:
     }
     return replacements.get(v, v)
 
+
 def generate_string(
     prompt: str, param_name: str, LLM_Model: Any, context: str
 ) -> str:
@@ -111,62 +115,81 @@ def generate_string(
 
     if param_name in substitute_params:
         message = (
-            "You are extracting one parameter for the function fn_substitute_string_with_regex.\n"
+            "You are extracting one parameter for the function "
+            "fn_substitute_string_with_regex.\n"
             "This function has three parameters:\n"
-            "- source_string: the original text to search in (copy it exactly, unchanged)\n"
-            "- regex: the pattern to search for, using ONLY square brackets for character classes "
+            "- source_string: the original text to search in "
+            "(copy it exactly, unchanged)\n"
+            "- regex: the pattern to search for, using ONLY square "
+            "brackets for character classes "
             "(e.g. \"[aeiouAEIOU]\") — never wrap it in parentheses\n"
-            "- replacement: the single symbol or word used for EACH match — always the same short value, "
-            "never repeated or multiplied based on how many matches occur "
-            "(e.g. 'asterisks' always means \"*\", never \"**\" or \"****\", no matter how many matches there are)\n"
+            "- replacement: the single symbol or word used for EACH "
+            "match — always the same short value, "
+            "never repeated or multiplied based on how many matches "
+            "occur "
+            "(e.g. 'asterisks' always means \"*\", never \"**\" or "
+            "\"****\", no matter how many matches there are)\n"
             "\n"
-            "Copy or derive only the value asked for. No explanations. Wrap the value in double quotes.\n"
+            "Copy or derive only the value asked for. No explanations. "
+            "Wrap the value in double quotes.\n"
             "\n"
-            "Prompt: \"Replace all digits in 'I have 12 cats and 3 dogs' with X\"\n"
+            "Prompt: \"Replace all digits in 'I have 12 cats and 3 "
+            "dogs' with X\"\n"
             "Parameter: source_string\n"
             "Value: \"I have 12 cats and 3 dogs\"\n"
             "\n"
-            "Prompt: \"Replace all digits in 'I have 12 cats and 3 dogs' with X\"\n"
+            "Prompt: \"Replace all digits in 'I have 12 cats and 3 "
+            "dogs' with X\"\n"
             "Parameter: regex\n"
             "Value: \"[0-9]+\"\n"
             "\n"
-            "Prompt: \"Replace all digits in 'I have 12 cats and 3 dogs' with X\"\n"
+            "Prompt: \"Replace all digits in 'I have 12 cats and 3 "
+            "dogs' with X\"\n"
             "Parameter: replacement\n"
             "Value: \"X\"\n"
             "\n"
-            "Prompt: \"Substitute the word 'red' with 'blue' in 'The red car passed the red house'\"\n"
+            "Prompt: \"Substitute the word 'red' with 'blue' in 'The "
+            "red car passed the red house'\"\n"
             "Parameter: source_string\n"
             "Value: \"The red car passed the red house\"\n"
             "\n"
-            "Prompt: \"Substitute the word 'red' with 'blue' in 'The red car passed the red house'\"\n"
+            "Prompt: \"Substitute the word 'red' with 'blue' in 'The "
+            "red car passed the red house'\"\n"
             "Parameter: regex\n"
             "Value: \"red\"\n"
             "\n"
-            "Prompt: \"Substitute the word 'red' with 'blue' in 'The red car passed the red house'\"\n"
+            "Prompt: \"Substitute the word 'red' with 'blue' in 'The "
+            "red car passed the red house'\"\n"
             "Parameter: replacement\n"
             "Value: \"blue\"\n"
             "\n"
-            "Prompt: \"Replace all vowels in 'Hello world' with asterisks\"\n"
+            "Prompt: \"Replace all vowels in 'Hello world' with "
+            "asterisks\"\n"
             "Parameter: source_string\n"
             "Value: \"Hello world\"\n"
             "\n"
-            "Prompt: \"Replace all vowels in 'Hello world' with asterisks\"\n"
+            "Prompt: \"Replace all vowels in 'Hello world' with "
+            "asterisks\"\n"
             "Parameter: regex\n"
             "Value: \"[aeiouAEIOU]\"\n"
             "\n"
-            "Prompt: \"Replace all vowels in 'Hello world' with asterisks\"\n"
+            "Prompt: \"Replace all vowels in 'Hello world' with "
+            "asterisks\"\n"
             "Parameter: replacement\n"
             "Value: \"*\"\n"
             "\n"
-            "Prompt: \"Replace all consonants in 'banana split' with underscores\"\n"
+            "Prompt: \"Replace all consonants in 'banana split' with "
+            "underscores\"\n"
             "Parameter: source_string\n"
             "Value: \"banana split\"\n"
             "\n"
-            "Prompt: \"Replace all consonants in 'banana split' with underscores\"\n"
+            "Prompt: \"Replace all consonants in 'banana split' with "
+            "underscores\"\n"
             "Parameter: regex\n"
             "Value: \"[^aeiouAEIOU ]\"\n"
             "\n"
-            "Prompt: \"Replace all consonants in 'banana split' with underscores\"\n"
+            "Prompt: \"Replace all consonants in 'banana split' with "
+            "underscores\"\n"
             "Parameter: replacement\n"
             "Value: \"_\"\n"
             "\n"
@@ -177,7 +200,8 @@ def generate_string(
     else:
         message = (
             "You are extracting a function argument from a request.\n"
-            "Copy the value EXACTLY as it appears or is implied in the prompt — "
+            "Copy the value EXACTLY as it appears or is implied in "
+            "the prompt — "
             "no explanations, no rephrasing, no extra words.\n"
             "Wrap the extracted value in double quotes.\n"
             "\n"
@@ -185,11 +209,13 @@ def generate_string(
             "Parameter: a\n"
             "Value: \"3\"\n"
             "\n"
-            "Prompt: \"Execute SQL query 'SELECT * FROM users' on the production database\"\n"
+            "Prompt: \"Execute SQL query 'SELECT * FROM users' on "
+            "the production database\"\n"
             "Parameter: query\n"
             "Value: \"SELECT * FROM users\"\n"
             "\n"
-            "Prompt: \"Read C:\\\\Users\\\\john\\\\config.ini with latin-1 encoding\"\n"
+            "Prompt: \"Read C:\\\\Users\\\\john\\\\config.ini with "
+            "latin-1 encoding\"\n"
             "Parameter: path\n"
             "Value: \"C:\\\\Users\\\\john\\\\config.ini\"\n"
             "\n"
@@ -228,7 +254,8 @@ def generate_string(
         current_string += token_str
         input_ids.append(next_token_id)
 
-        if len(current_string) > 200:  # raised from 50 — SQL/templates/sentences need room
+        if len(current_string) > 200:
+            # raised from 50 — SQL/templates/sentences need room
             break
 
     if current_string == "":
@@ -239,6 +266,7 @@ def generate_string(
     elif param_name == "regex":
         result = normalize_regex(result)
     return result
+
 
 def constrained_decoder(
     prompt: str, function: dict, LLM_Model: Any

@@ -1,27 +1,35 @@
 import argparse
 import json
-from .loader import read_json_files
-from .function_selector import function_selector
-from .constrained_decoder import constrained_decoder
-from llm_sdk import Small_LLM_Model
-from .models import OutputResult
 import os
 
-def main():
+from llm_sdk import Small_LLM_Model
+
+from .constrained_decoder import constrained_decoder
+from .function_selector import function_selector
+from .loader import read_json_files
+from .models import OutputResult
+
+
+def main() -> None:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--input", default="data/input/function_calling_tests.json")
+    parser.add_argument(
+        "--input",
+        default="data/input/function_calling_tests.json",
+    )
     parser.add_argument(
         "--functions_definition",
         default="data/input/functions_definition.json",
     )
-    parser.add_argument("--output", default="data/output/function_calling_results.json")
+    parser.add_argument(
+        "--output",
+        default="data/output/function_calling_results.json",
+    )
 
     args = parser.parse_args()
     module = Small_LLM_Model()
 
     data = read_json_files(args.functions_definition, args.input)
-
 
     final_result = []
     for i, prompt in enumerate(data["prompts"]):
@@ -54,11 +62,12 @@ def main():
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
 
     with open(args.output, "w") as f:
+
         json.dump(final_result, f, indent=4)
+
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt as e:
         print(e)
-    
