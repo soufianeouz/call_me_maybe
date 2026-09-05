@@ -1,6 +1,7 @@
 import json
 import numpy as np
 from typing import Any
+import re
 
 
 def generate_number(
@@ -72,6 +73,36 @@ def generate_number(
         return int(current_value)
     return float(current_value)
 
+
+
+SYMBOL_MAP = {
+    "asterisk": "*", "asterisks": "*", "star": "*", "stars": "*",
+    "underscore": "_", "underscores": "_",
+    "hyphen": "-", "hyphens": "-", "dash": "-", "dashes": "-",
+    "hashtag": "#", "hashtags": "#", "hash": "#", "pound": "#",
+    "dollar sign": "$", "dollar signs": "$",
+    "at sign": "@", "at symbol": "@",
+}
+
+def normalize_replacement(value: str) -> str:
+    v = value.lower().strip()
+    if v in SYMBOL_MAP:
+        return SYMBOL_MAP[v]
+    if len(set(v)) == 1 and v[0] in "*_-#":  # catches "****", "----", etc.
+        return v[0]
+    return value  # leave literal words/values (e.g. "X", "blue", "NUMBERS") untouched
+
+
+def normalize_regex(value: str) -> str:
+    v = value.strip()
+    v = v.strip("()")  # strip stray wrapping parens the model adds
+    # common word->pattern fixes the model tends to drift on
+    replacements = {
+        "aeiou": "[aeiouAEIOU]",
+        "AEIOU": "[aeiouAEIOU]",
+        "[0-9]+": r"\d+",
+    }
+    return replacements.get(v, v)
 
 def generate_string(
     prompt: str, param_name: str, LLM_Model: Any, context: str
@@ -185,7 +216,7 @@ def generate_string(
         next_token_id = int(np.argmax(logist))
 
         token_str = reverse_vocab[next_token_id]
-        print(token_str)
+        # print(token_str)
 
         if any(stop in token_str for stop in stop_tokens):
             # print(token_str.split('"'))
@@ -203,6 +234,10 @@ def generate_string(
     if current_string == "":
         return ""
     result = current_string.strip().lstrip("Ġ").replace("Ġ", " ")
+    if param_name == "replacement":
+        result = normalize_replacement(result)
+    elif param_name == "regex":
+        result = normalize_regex(result)
     return result
 
 def constrained_decoder(
