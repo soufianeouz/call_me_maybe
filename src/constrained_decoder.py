@@ -76,16 +76,102 @@ def generate_number(
 def generate_string(
     prompt: str, param_name: str, LLM_Model: Any, context: str
 ) -> str:
-    message = (
-        f"Prompt: '{prompt}'\n"
-        f"Extract only the value for '{param_name}' from the prompt.\n"
-        f"{context}{param_name}="
-    )
+    substitute_params = {"source_string", "regex", "replacement"}
+
+    if param_name in substitute_params:
+        message = (
+            "You are extracting one parameter for the function fn_substitute_string_with_regex.\n"
+            "This function has three parameters:\n"
+            "- source_string: the original text to search in (copy it exactly, unchanged)\n"
+            "- regex: the pattern to search for, using ONLY square brackets for character classes "
+            "(e.g. \"[aeiouAEIOU]\") — never wrap it in parentheses\n"
+            "- replacement: the single symbol or word used for EACH match — always the same short value, "
+            "never repeated or multiplied based on how many matches occur "
+            "(e.g. 'asterisks' always means \"*\", never \"**\" or \"****\", no matter how many matches there are)\n"
+            "\n"
+            "Copy or derive only the value asked for. No explanations. Wrap the value in double quotes.\n"
+            "\n"
+            "Prompt: \"Replace all digits in 'I have 12 cats and 3 dogs' with X\"\n"
+            "Parameter: source_string\n"
+            "Value: \"I have 12 cats and 3 dogs\"\n"
+            "\n"
+            "Prompt: \"Replace all digits in 'I have 12 cats and 3 dogs' with X\"\n"
+            "Parameter: regex\n"
+            "Value: \"[0-9]+\"\n"
+            "\n"
+            "Prompt: \"Replace all digits in 'I have 12 cats and 3 dogs' with X\"\n"
+            "Parameter: replacement\n"
+            "Value: \"X\"\n"
+            "\n"
+            "Prompt: \"Substitute the word 'red' with 'blue' in 'The red car passed the red house'\"\n"
+            "Parameter: source_string\n"
+            "Value: \"The red car passed the red house\"\n"
+            "\n"
+            "Prompt: \"Substitute the word 'red' with 'blue' in 'The red car passed the red house'\"\n"
+            "Parameter: regex\n"
+            "Value: \"red\"\n"
+            "\n"
+            "Prompt: \"Substitute the word 'red' with 'blue' in 'The red car passed the red house'\"\n"
+            "Parameter: replacement\n"
+            "Value: \"blue\"\n"
+            "\n"
+            "Prompt: \"Replace all vowels in 'Hello world' with asterisks\"\n"
+            "Parameter: source_string\n"
+            "Value: \"Hello world\"\n"
+            "\n"
+            "Prompt: \"Replace all vowels in 'Hello world' with asterisks\"\n"
+            "Parameter: regex\n"
+            "Value: \"[aeiouAEIOU]\"\n"
+            "\n"
+            "Prompt: \"Replace all vowels in 'Hello world' with asterisks\"\n"
+            "Parameter: replacement\n"
+            "Value: \"*\"\n"
+            "\n"
+            "Prompt: \"Replace all consonants in 'banana split' with underscores\"\n"
+            "Parameter: source_string\n"
+            "Value: \"banana split\"\n"
+            "\n"
+            "Prompt: \"Replace all consonants in 'banana split' with underscores\"\n"
+            "Parameter: regex\n"
+            "Value: \"[^aeiouAEIOU ]\"\n"
+            "\n"
+            "Prompt: \"Replace all consonants in 'banana split' with underscores\"\n"
+            "Parameter: replacement\n"
+            "Value: \"_\"\n"
+            "\n"
+            f"Prompt: \"{prompt}\"\n"
+            f"Parameter: {param_name}\n"
+            f"Value: \""
+        )
+    else:
+        message = (
+            "You are extracting a function argument from a request.\n"
+            "Copy the value EXACTLY as it appears or is implied in the prompt — "
+            "no explanations, no rephrasing, no extra words.\n"
+            "Wrap the extracted value in double quotes.\n"
+            "\n"
+            "Prompt: \"What is the product of 3 and 5?\"\n"
+            "Parameter: a\n"
+            "Value: \"3\"\n"
+            "\n"
+            "Prompt: \"Execute SQL query 'SELECT * FROM users' on the production database\"\n"
+            "Parameter: query\n"
+            "Value: \"SELECT * FROM users\"\n"
+            "\n"
+            "Prompt: \"Read C:\\\\Users\\\\john\\\\config.ini with latin-1 encoding\"\n"
+            "Parameter: path\n"
+            "Value: \"C:\\\\Users\\\\john\\\\config.ini\"\n"
+            "\n"
+            f"Prompt: \"{prompt}\"\n"
+            f"Parameter: {param_name}\n"
+            f"Value: \""
+        )
+
     ids = LLM_Model.encode(message)
 
     current_string = ""
     input_ids = list(ids[0])
-    stop_tokens = [" ", "\n", "Ċ", "▁"]
+    stop_tokens = ["\"", "\n", "Ċ"]  # stop on closing quote, not on space
 
     path = LLM_Model.get_path_to_vocab_file()
     with open(path, "r") as f:
@@ -98,18 +184,26 @@ def generate_string(
         logist = np.array(logist)
         next_token_id = int(np.argmax(logist))
 
-        if any(stop in reverse_vocab[next_token_id] for stop in stop_tokens):
+        token_str = reverse_vocab[next_token_id]
+        print(token_str)
+
+        if any(stop in token_str for stop in stop_tokens):
+            # print(token_str.split('"'))
+            if len(token_str.split('"')) > 1:
+                current_string += token_str.split('"')[0]
+
             break
-        current_string += reverse_vocab[next_token_id]
+
+        current_string += token_str
         input_ids.append(next_token_id)
-        if len(current_string) > 50:
+
+        if len(current_string) > 200:  # raised from 50 — SQL/templates/sentences need room
             break
 
     if current_string == "":
         return ""
-    result = current_string.replace("'", "").strip().lstrip("Ġ")
-    return result.replace("Ġ", " ")
-
+    result = current_string.strip().lstrip("Ġ").replace("Ġ", " ")
+    return result
 
 def constrained_decoder(
     prompt: str, function: dict, LLM_Model: Any
@@ -131,5 +225,4 @@ def constrained_decoder(
             )
         context += f"{param_name}={value}\n"
         result[param_name] = value
-
     return result
