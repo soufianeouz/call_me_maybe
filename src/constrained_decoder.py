@@ -4,7 +4,7 @@ from typing import Any
 
 
 def generate_number(
-    prompt: str, param_name: str, LLM_Model: Any, context: str
+    prompt: str, param_name: str, LLM_Model: Any, context: str, param_type: str
 ) -> float:
     message = (
         f"Prompt: '{prompt}'\n"
@@ -68,7 +68,8 @@ def generate_number(
 
     if current_value == "" or current_value == "-":
         return 0.0
-
+    if param_type == "integer":
+        return int(current_value)
     return float(current_value)
 
 
@@ -120,9 +121,9 @@ def constrained_decoder(
     for param_name, param_info in function["parameters"].items():
         param_type = param_info["type"]
 
-        if param_type == "number":
+        if param_type == "number" or param_type == "integer":
             value = generate_number(
-                prompt, param_name, LLM_Model, context
+                prompt, param_name, LLM_Model, context, param_type
             )
         if param_type == "string":
             value = generate_string(
